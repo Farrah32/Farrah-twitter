@@ -1,3 +1,55 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: 'AWS::Serverless-2016-10-31'
-Resources: {}
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  topic47DD0DCF:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-topic47DD0DCF
+    Metadata:
+      StackeryName: button-tweets
+    Condition: topic47DD0DCFCreateNewResource
+  topic47DD0DCFExistingResource:
+    Type: Custom::StackeryExistingResource
+    Properties:
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:stackery-agent-commander
+      Type: topic
+      Data: arn:aws:sns:us-west-2:364606701450:button-tweets
+    Condition: topic47DD0DCFUseExistingResource
+  function41BE66F9:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-function41BE66F9
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: post tweet
+      CodeUri: src/tweet
+      Handler: index.handler
+      Runtime: nodejs8.10
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+      Events:
+        topic47DD0DCF:
+          Type: SNS
+          Properties:
+            Topic: !If
+              - topic47DD0DCFUseExistingResource
+              - !Ref topic47DD0DCFExistingResource
+              - !Ref topic47DD0DCF
+    Metadata:
+      StackeryName: post tweet
+Conditions:
+  topic47DD0DCFCreateNewResource: !Equals
+    - 'false'
+    - 'true'
+  topic47DD0DCFUseExistingResource: !Not
+    - Condition: topic47DD0DCFCreateNewResource
+Parameters:
+  StackTagName:
+    Type: String
+    Description: Stack Name (injected by Stackery at deployment time)
+  EnvironmentTagName:
+    Type: String
+    Description: Environment Name (injected by Stackery at deployment time)
